@@ -51,12 +51,15 @@ static const CGFloat kCircleShowHideDuration = .5;
             circle.backgroundColor = [UIColor whiteColor].CGColor;
             circle.cornerRadius = CGRectGetHeight(circle.bounds) * 0.5;
             [circle setValue:@(NO) forKey:kCircleShownKey];
-            circle.opacity = 0;
             circle.position = cirlePositionOnCircleWithRadiusAndOffset(angleInDegrees * i, innerRadius, outterRadius);
             if (animated) {
+                circle.opacity = 1;
                 CAKeyframeAnimation *anim = [self circleScaleAnimationAtIndex:i
                                                                 fromBeginTime:beginTime];
                 [circle addAnimation:anim forKey:@"scale-anim"];
+            }
+            else {
+                circle.opacity = 0;
             }
             [self addSublayer:circle];
         }
