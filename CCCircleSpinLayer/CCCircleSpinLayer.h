@@ -12,5 +12,4 @@
 
 - (instancetype)initWithFrame:(CGRect)frame color:(UIColor*)color animated:(BOOL)animated;
 - (void)showInProgress:(CGFloat)progress; //positive-show, negative-hide
-- (void)resumeLayers;
 @end
