@@ -48,7 +48,7 @@ static const CGFloat kCircleShowHideDuration = .5;
         for (NSInteger i = 0; i < kNumberOfCircle; ++i) {
             CALayer *circle = [CALayer layer];
             circle.bounds = CGRectMake(0, 0, circleRaidus, circleRaidus);
-            circle.backgroundColor = [UIColor whiteColor].CGColor;
+            circle.backgroundColor = color.CGColor;
             circle.cornerRadius = CGRectGetHeight(circle.bounds) * 0.5;
             [circle setValue:@(NO) forKey:kCircleShownKey];
             circle.position = cirlePositionOnCircleWithRadiusAndOffset(angleInDegrees * i, innerRadius, outterRadius);
