@@ -28,23 +28,24 @@ static const CGFloat kCircleShowHideDuration = .5;
 @interface CCCircleSpinLayer()
 {
     NSInteger offsetIndex_;
+    BOOL isAnimating_;
 }
 @property (nonatomic, strong) UIColor *color;
 @end
 
 @implementation CCCircleSpinLayer
 
-- (instancetype)initWithFrame:(CGRect)frame color:(UIColor *)color animated:(BOOL)animated{
+- (instancetype)initWithSize:(CGSize)size color:(UIColor *)color animated:(BOOL)animated {
     if (self = [self init]) {
         self.backgroundColor = [UIColor colorWithRed:0.1529 green:0.6824 blue:0.3765 alpha:1].CGColor;
-        self.frame = frame;
-        CGSize size = frame.size;
+        self.bounds = CGRectMake(0, 0, size.width, size.height);
         NSTimeInterval beginTime = CACurrentMediaTime();
         CGFloat outterRadius = MIN(size.width, size.height) / 2;
         CGFloat circleRaidus = outterRadius / 4;
         CGFloat innerRadius = outterRadius - circleRaidus;
         CGFloat angleInDegrees = 360 / kNumberOfCircle;
         offsetIndex_ = NSIntegerMin;
+        isAnimating_ = animated;
         for (NSInteger i = 0; i < kNumberOfCircle; ++i) {
             CALayer *circle = [CALayer layer];
             circle.bounds = CGRectMake(0, 0, circleRaidus, circleRaidus);
@@ -94,38 +95,57 @@ static const CGFloat kCircleShowHideDuration = .5;
 //}
 
 - (void)showInProgress:(CGFloat)progress {
-    int offsetIndex = ceilf(progress * kNumberOfCircle);
-    if (offsetIndex_ == offsetIndex) return;
-    
-    NSLog(@"%d, %f", offsetIndex, progress);
-    
-    CALayer *layer = nil;
-    CAAnimationGroup *animGroup = nil;
-    if (progress >= 0) {
-        //show
-        for (int i = 0; i < abs(offsetIndex); ++i) {
-            layer = self.sublayers[i];
-            if (![[layer valueForKey:kCircleShownKey] boolValue]) {
-                animGroup = [self circleShowAnimationGroup];
-                [layer addAnimation:animGroup forKey:@"show-anim"];
-                [layer setValue:@YES forKey:kCircleShownKey];
+    if (-1 <= progress && progress <= 1) {
+        int offsetIndex = ceilf(progress * kNumberOfCircle);
+        if (offsetIndex_ == offsetIndex) return;
+//        NSLog(@"%d, %f", offsetIndex, progress);
+        
+        CALayer *layer = nil;
+        CAAnimationGroup *animGroup = nil;
+        if (progress >= 0) {
+            //show
+            for (int i = 0; i < abs(offsetIndex); ++i) {
+                layer = self.sublayers[i];
+                if (![[layer valueForKey:kCircleShownKey] boolValue]) {
+                    animGroup = [self circleShowAnimationGroup];
+                    [layer addAnimation:animGroup forKey:@"show-anim"];
+                    [layer setValue:@YES forKey:kCircleShownKey];
+                }
             }
         }
+        else {
+            //hide
+            for (int i = kNumberOfCircle - 1; i > abs(offsetIndex) - 1; --i) {
+                layer = self.sublayers[i];
+                if ([[layer valueForKey:kCircleShownKey] boolValue]) {
+                    animGroup = [self circleHideAnimationGroup];
+                    [layer addAnimation:animGroup forKey:@"hide-anim"];
+                    [layer setValue:@NO forKey:kCircleShownKey];
+                }
+            }
+            
+        }
+        
+        offsetIndex_ = offsetIndex;
     }
     else {
-        //hide
-        for (int i = kNumberOfCircle - 1; i > abs(offsetIndex) - 1; --i) {
-            layer = self.sublayers[i];
-            if ([[layer valueForKey:kCircleShownKey] boolValue]) {
-                animGroup = [self circleHideAnimationGroup];
-                [layer addAnimation:animGroup forKey:@"hide-anim"];
-                [layer setValue:@NO forKey:kCircleShownKey];
-            }
-        }
-
+        [self resetLayersAndAnimated:NO];
     }
-    
-    offsetIndex_ = offsetIndex;
+}
+
+- (void)startAnimating {
+    if (!isAnimating_) {
+        [self resetLayersAndAnimated:YES];
+        [self resumeLayers];
+        isAnimating_ = YES;
+    }
+}
+
+- (void)stopAnimating {
+    if (isAnimating_) {
+        [self resetLayersAndAnimated:NO];
+        isAnimating_ = NO;
+	}
 }
 
 
@@ -220,19 +240,28 @@ static const CGFloat kCircleShowHideDuration = .5;
     return anim;
 }
 
-- (void)resetLayers {
+- (void)resetLayersAndAnimated:(BOOL)animated {
     NSTimeInterval beginTime = CACurrentMediaTime();
     CAKeyframeAnimation *anim = nil;
     CALayer *circle = nil;
     for (int i = 0; i < [self.sublayers count]; ++i) {
         circle = self.sublayers[i];
         [circle removeAllAnimations];
-        anim = [self circleScaleAnimationAtIndex:i
-                                   fromBeginTime:beginTime];
-        [circle addAnimation:anim forKey:@"scale-anim"];
+        [circle setValue:@(NO) forKey:kCircleShownKey];
+        if (animated) {
+            circle.opacity = 1;
+            anim = [self circleScaleAnimationAtIndex:i
+                                       fromBeginTime:beginTime];
+            [circle addAnimation:anim forKey:@"scale-anim"];
+        }
+        else {
+            circle.opacity = 0;
+        }
     }
     
-    [self pauseLayers];
+    if (animated) {
+        [self pauseLayers];
+    }
 }
 
 - (void)pauseLayers {
