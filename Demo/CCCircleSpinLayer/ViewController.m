@@ -19,9 +19,9 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.sp = [[CCCircleSpinLayer alloc] initWithFrame:CGRectMake(0, 0, 80, 80)
-                                                 color:[UIColor whiteColor]
-                                              animated:NO];
+    self.sp = [[CCCircleSpinLayer alloc] initWithSize:CGSizeMake(80, 80)
+                                                color:[UIColor whiteColor]
+                                             animated:NO];
     [self.view.layer addSublayer:self.sp];
     self.sp.position = self.view.center;
     self.view.backgroundColor = [UIColor colorWithCGColor:self.sp.backgroundColor];

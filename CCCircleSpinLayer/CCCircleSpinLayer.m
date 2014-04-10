@@ -31,6 +31,7 @@ static const CGFloat kCircleShowHideDuration = .5;
     BOOL isAnimating_;
 }
 @property (nonatomic, strong) UIColor *color;
+@property (nonatomic, strong) NSArray *circles;
 @end
 
 @implementation CCCircleSpinLayer
@@ -46,6 +47,7 @@ static const CGFloat kCircleShowHideDuration = .5;
         CGFloat angleInDegrees = 360 / kNumberOfCircle;
         offsetIndex_ = NSIntegerMin;
         isAnimating_ = animated;
+        NSMutableArray *arr = [NSMutableArray arrayWithCapacity:kNumberOfCircle];
         for (NSInteger i = 0; i < kNumberOfCircle; ++i) {
             CALayer *circle = [CALayer layer];
             circle.bounds = CGRectMake(0, 0, circleRaidus, circleRaidus);
@@ -63,7 +65,10 @@ static const CGFloat kCircleShowHideDuration = .5;
                 circle.opacity = 0;
             }
             [self addSublayer:circle];
+            [arr addObject:circle];
         }
+        
+        _circles = [NSArray arrayWithArray:arr];
     }
     return self;
 }
@@ -98,14 +103,14 @@ static const CGFloat kCircleShowHideDuration = .5;
     if (-1 <= progress && progress <= 1) {
         int offsetIndex = ceilf(progress * kNumberOfCircle);
         if (offsetIndex_ == offsetIndex) return;
-//        NSLog(@"%d, %f", offsetIndex, progress);
+        //        NSLog(@"%d, %f", offsetIndex, progress);
         
         CALayer *layer = nil;
         CAAnimationGroup *animGroup = nil;
         if (progress >= 0) {
             //show
             for (int i = 0; i < abs(offsetIndex); ++i) {
-                layer = self.sublayers[i];
+                layer = self.circles[i];
                 if (![[layer valueForKey:kCircleShownKey] boolValue]) {
                     animGroup = [self circleShowAnimationGroup];
                     [layer addAnimation:animGroup forKey:@"show-anim"];
@@ -116,7 +121,7 @@ static const CGFloat kCircleShowHideDuration = .5;
         else {
             //hide
             for (int i = kNumberOfCircle - 1; i > abs(offsetIndex) - 1; --i) {
-                layer = self.sublayers[i];
+                layer = self.circles[i];
                 if ([[layer valueForKey:kCircleShownKey] boolValue]) {
                     animGroup = [self circleHideAnimationGroup];
                     [layer addAnimation:animGroup forKey:@"hide-anim"];
@@ -213,7 +218,7 @@ static const CGFloat kCircleShowHideDuration = .5;
     float scale = 0;
     float mid = (kNumberOfCircle - 2) / 2;
     int midOffset = mid + 1;
-
+    
     for (int i = 1; i < kNumberOfCircle + 1; ++i) {
         keyTime = MIN(anim.duration / multiple / kNumberOfCircle * i, 1);
         [keyTimes addObject:@(keyTime)];
@@ -241,17 +246,20 @@ static const CGFloat kCircleShowHideDuration = .5;
 }
 
 - (void)resetLayersAndAnimated:(BOOL)animated {
-    NSTimeInterval beginTime = CACurrentMediaTime();
+    CFTimeInterval currentTime = CACurrentMediaTime();
+    CFTimeInterval currentTimeInSuperLayer = [self convertTime:currentTime
+                                                     fromLayer:nil];
     CAKeyframeAnimation *anim = nil;
     CALayer *circle = nil;
-    for (int i = 0; i < [self.sublayers count]; ++i) {
-        circle = self.sublayers[i];
+    for (int i = 0; i < [self.circles count]; ++i) {
+        circle = self.circles[i];
         [circle removeAllAnimations];
         [circle setValue:@(NO) forKey:kCircleShownKey];
         if (animated) {
             circle.opacity = 1;
+            CFTimeInterval currentTimeInCircle = [circle convertTime:currentTimeInSuperLayer fromLayer:self];
             anim = [self circleScaleAnimationAtIndex:i
-                                       fromBeginTime:beginTime];
+                                       fromBeginTime:currentTimeInCircle];
             [circle addAnimation:anim forKey:@"scale-anim"];
         }
         else {
