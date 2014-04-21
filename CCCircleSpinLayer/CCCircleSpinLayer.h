@@ -10,9 +10,16 @@
 
 @interface CCCircleSpinLayer : CALayer
 
-- (instancetype)initWithSize:(CGSize)size color:(UIColor*)color animated:(BOOL)animated;
+- (instancetype)initWithSize:(CGSize)size
+                       color:(UIColor*)color
+                    animated:(BOOL)animated;
+- (instancetype)initWithSize:(CGSize)size
+                circleRaidus:(CGFloat)circleRaidus
+                       color:(UIColor *)color
+                    animated:(BOOL)animated;
 - (void)showInProgress:(CGFloat)progress; //positive-show, negative-hide
 
 - (void)startAnimating;
 - (void)stopAnimating;
 @end
+

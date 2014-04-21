@@ -37,20 +37,33 @@ static const CGFloat kCircleShowHideDuration = .5;
 @implementation CCCircleSpinLayer
 
 - (instancetype)initWithSize:(CGSize)size color:(UIColor *)color animated:(BOOL)animated {
+    return [self initWithSize:size circleRaidus:0 color:color animated:animated];
+}
+
+- (instancetype)initWithSize:(CGSize)size circleRaidus:(CGFloat)circleRaidus color:(UIColor *)color animated:(BOOL)animated {
     if (self = [self init]) {
         self.backgroundColor = [UIColor colorWithRed:0.1529 green:0.6824 blue:0.3765 alpha:1].CGColor;
         self.bounds = CGRectMake(0, 0, size.width, size.height);
         NSTimeInterval beginTime = CACurrentMediaTime();
         CGFloat outterRadius = MIN(size.width, size.height) / 2;
-        CGFloat circleRaidus = outterRadius / 4;
-        CGFloat innerRadius = outterRadius - circleRaidus;
+        
+        NSAssert(circleRaidus <= outterRadius / 2, @"circleRaidus should be less than a quarter of size");
+        CGFloat circleRaidus_ = 0;
+        if (circleRaidus <= 0) {
+            circleRaidus_ = outterRadius / 4;
+        }
+        else {
+            circleRaidus_ = circleRaidus;
+        }
+        
+        CGFloat innerRadius = outterRadius - circleRaidus_;
         CGFloat angleInDegrees = 360 / kNumberOfCircle;
         offsetIndex_ = NSIntegerMin;
         isAnimating_ = animated;
         NSMutableArray *arr = [NSMutableArray arrayWithCapacity:kNumberOfCircle];
         for (NSInteger i = 0; i < kNumberOfCircle; ++i) {
             CALayer *circle = [CALayer layer];
-            circle.bounds = CGRectMake(0, 0, circleRaidus, circleRaidus);
+            circle.bounds = CGRectMake(0, 0, circleRaidus_, circleRaidus_);
             circle.backgroundColor = color.CGColor;
             circle.cornerRadius = CGRectGetHeight(circle.bounds) * 0.5;
             [circle setValue:@(NO) forKey:kCircleShownKey];
@@ -276,6 +289,7 @@ static const CGFloat kCircleShowHideDuration = .5;
     CFTimeInterval pausedTime = [self convertTime:CACurrentMediaTime() fromLayer:nil];
     self.speed = 0.0;
     self.timeOffset = pausedTime;
+    
 }
 
 - (void)resumeLayers {
