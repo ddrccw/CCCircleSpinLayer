@@ -68,14 +68,11 @@ static const CGFloat kCircleShowHideDuration = .5;
             circle.cornerRadius = CGRectGetHeight(circle.bounds) * 0.5;
             [circle setValue:@(NO) forKey:kCircleShownKey];
             circle.position = cirlePositionOnCircleWithRadiusAndOffset(angleInDegrees * i, innerRadius, outterRadius);
+            circle.opacity = 0;
             if (animated) {
-                circle.opacity = 1;
-                CAKeyframeAnimation *anim = [self circleScaleAnimationAtIndex:i
-                                                                fromBeginTime:beginTime];
+                CAAnimationGroup *anim = [self circleScaleAnimationAtIndex:i
+                                                             fromBeginTime:beginTime];
                 [circle addAnimation:anim forKey:@"scale-anim"];
-            }
-            else {
-                circle.opacity = 0;
             }
             [self addSublayer:circle];
             [arr addObject:circle];
@@ -117,7 +114,6 @@ static const CGFloat kCircleShowHideDuration = .5;
         int offsetIndex = ceilf(progress * kNumberOfCircle);
         if (offsetIndex_ == offsetIndex) return;
         //        NSLog(@"%d, %f", offsetIndex, progress);
-        
         CALayer *layer = nil;
         CAAnimationGroup *animGroup = nil;
         if (progress >= 0) {
@@ -206,7 +202,7 @@ static const CGFloat kCircleShowHideDuration = .5;
     opacityAnim.values = @[@0, @1, @1, @1];
     
     CAAnimationGroup *animGroup = [CAAnimationGroup animation];
-    animGroup.duration = .5;
+    animGroup.duration = kCircleShowHideDuration;
 	animGroup.animations = @[scaleAnim, opacityAnim];
 	animGroup.fillMode = kCAFillModeForwards;
 	animGroup.removedOnCompletion = NO;
@@ -214,14 +210,21 @@ static const CGFloat kCircleShowHideDuration = .5;
     return animGroup;
 }
 
-- (CAKeyframeAnimation *)circleScaleAnimationAtIndex:(NSInteger)index fromBeginTime:(NSTimeInterval)beginTime {
-    CAKeyframeAnimation *anim = [CAKeyframeAnimation animationWithKeyPath:@"transform"];
-    anim.removedOnCompletion = NO;
-    float multiple = 1.5;
-    anim.duration = kNumberOfCircle / 10. * multiple;
-    anim.beginTime = beginTime - anim.duration + index * (anim.duration / kNumberOfCircle);
+- (CAAnimationGroup *)circleScaleAnimationAtIndex:(NSInteger)index fromBeginTime:(NSTimeInterval)beginTime {
+    CABasicAnimation *opacityAnim = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacityAnim.fromValue = @1;
+    opacityAnim.toValue = @1;
+    opacityAnim.removedOnCompletion = NO;
+    opacityAnim.fillMode = kCAFillModeForwards;
+    opacityAnim.beginTime = 0;
     
-    anim.repeatCount = HUGE_VALF;
+    CAKeyframeAnimation *scaleAnim = [CAKeyframeAnimation animationWithKeyPath:@"transform"];
+    scaleAnim.removedOnCompletion = NO;
+    scaleAnim.fillMode = kCAFillModeForwards;
+    scaleAnim.beginTime = 0;
+    float multiple = 1;
+    scaleAnim.duration = kNumberOfCircle / 7. * multiple;
+    
     NSMutableArray *keyTimes = [NSMutableArray arrayWithCapacity:kNumberOfCircle + 1];
     NSMutableArray *values = [NSMutableArray arrayWithCapacity:kNumberOfCircle];
     NSMutableArray *timeFuntions = [NSMutableArray arrayWithCapacity:kNumberOfCircle];
@@ -233,7 +236,7 @@ static const CGFloat kCircleShowHideDuration = .5;
     int midOffset = mid + 1;
     
     for (int i = 1; i < kNumberOfCircle + 1; ++i) {
-        keyTime = MIN(anim.duration / multiple / kNumberOfCircle * i, 1);
+        keyTime = MIN(scaleAnim.duration / multiple / kNumberOfCircle * i, 1);
         [keyTimes addObject:@(keyTime)];
         
         if (i == 1 || i == kNumberOfCircle) {
@@ -251,45 +254,55 @@ static const CGFloat kCircleShowHideDuration = .5;
         [timeFuntions addObject:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
     }
     
-    anim.keyTimes = keyTimes;
-    anim.values = values;
-    anim.timingFunctions = timeFuntions;
+    scaleAnim.keyTimes = keyTimes;
+    scaleAnim.values = values;
+    scaleAnim.timingFunctions = timeFuntions;
     
-    return anim;
+    CAAnimationGroup *animGroup = [CAAnimationGroup animation];
+    animGroup.duration = scaleAnim.duration;
+    animGroup.beginTime = beginTime - 65536 * scaleAnim.duration + index * (scaleAnim.duration / kNumberOfCircle);
+    animGroup.repeatCount = HUGE_VALF;
+    animGroup.animations = @[opacityAnim, scaleAnim];
+    animGroup.removedOnCompletion = NO;
+	animGroup.fillMode = kCAFillModeForwards;
+    animGroup.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    
+    return animGroup;
 }
 
 - (void)resetLayersAndAnimated:(BOOL)animated {
     CFTimeInterval currentTime = CACurrentMediaTime();
     CFTimeInterval currentTimeInSuperLayer = [self convertTime:currentTime
                                                      fromLayer:nil];
-    CAKeyframeAnimation *anim = nil;
+    CAAnimationGroup *anim = nil;
     CALayer *circle = nil;
     for (int i = 0; i < [self.circles count]; ++i) {
         circle = self.circles[i];
         [circle removeAllAnimations];
+        circle.opacity = 0;
         [circle setValue:@(NO) forKey:kCircleShownKey];
         if (animated) {
-            circle.opacity = 1;
             CFTimeInterval currentTimeInCircle = [circle convertTime:currentTimeInSuperLayer fromLayer:self];
             anim = [self circleScaleAnimationAtIndex:i
                                        fromBeginTime:currentTimeInCircle];
             [circle addAnimation:anim forKey:@"scale-anim"];
         }
-        else {
-            circle.opacity = 0;
-        }
     }
     
     if (animated) {
-        [self pauseLayers];
+        [self pauseLayersAtTime:currentTime];
+    }
+    else {
+        self.speed = 1;
+        self.timeOffset = 0;
+        self.beginTime = 0;
     }
 }
 
-- (void)pauseLayers {
-    CFTimeInterval pausedTime = [self convertTime:CACurrentMediaTime() fromLayer:nil];
+- (void)pauseLayersAtTime:(CFTimeInterval)time {
+    CFTimeInterval pausedTime = [self convertTime:time fromLayer:nil];
     self.speed = 0.0;
     self.timeOffset = pausedTime;
-    
 }
 
 - (void)resumeLayers {
